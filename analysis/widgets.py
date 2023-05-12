@@ -2,14 +2,14 @@ import ipywidgets as widgets
 from IPython.display import display
 
 
-class MinianHandlerWidgets:
-    """Class with notebook widgets for MinianHandler"""
+class ActiveStateAnalyzerWidgets:
+    """Class with notebook widgets for ActiveStateAnalyzer"""
 
     @staticmethod
     def find_active_state(model):
         """
         Function for creating UI for find_active_state
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         neuron = widgets.Dropdown(
             options=model.signals.columns,
@@ -94,7 +94,7 @@ class MinianHandlerWidgets:
     def burst_rate(model):
         """
         Function for creating UI for burst rate
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         max_bins = widgets.IntSlider(
             value=15,
@@ -126,7 +126,7 @@ class MinianHandlerWidgets:
     def network_spike_rate(model):
         """
         Function for creating UI for network spike rate
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         period = widgets.IntSlider(
             value=1,
@@ -163,7 +163,7 @@ class MinianHandlerWidgets:
     def network_spike_peak(model):
         """
         Function for creating UI for network spike peak
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         period = widgets.IntSlider(
             value=1,
@@ -197,7 +197,7 @@ class MinianHandlerWidgets:
     def network_spike_duration(model, thresholds):
         """
         Function for creating UI for network spike duration
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         :param thresholds: threshold values in percentages
         """
         button = widgets.Button(description="Save", button_style="success")
@@ -215,7 +215,7 @@ class MinianHandlerWidgets:
     def correlation(model):
         """
         Function for creating UI for correlation
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
 
         corr_method = widgets.Dropdown(
@@ -267,7 +267,7 @@ class MinianHandlerWidgets:
     def save_correlation(model):
         """
         Function for creating UI for correlation
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
 
         corr_method = widgets.Dropdown(
@@ -296,7 +296,7 @@ class MinianHandlerWidgets:
     def network_degree(model):
         """
         Function for creating UI for network degree
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         corr_method_nd = widgets.Dropdown(
             options=["signal", "diff", "active", "active_acc", "transfer_entropy"]
@@ -322,7 +322,7 @@ class MinianHandlerWidgets:
     def connectivity(model):
         """
         Function for creating UI for connectivity
-        :param model: MinianHandler class
+        :param model: ActiveStateAnalyzer class
         """
         corr_method_conn = widgets.Dropdown(
             options=["signal", "diff", "active", "active_acc", "transfer_entropy"]

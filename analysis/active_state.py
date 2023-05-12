@@ -14,7 +14,7 @@ from analysis.functions import corr_df_to_distribution
 sns.set(color_codes=True)
 
 
-class MinianAnalysis:
+class ActiveStateAnalyzer:
     """
     Class for processing data after minian.
     It solves tasks:
@@ -727,7 +727,7 @@ class MinianAnalysis:
         :param corr_df: dataframe with correlation values
         :return: number of clusters, mean cluster size, mean intercluster distance, mean intracluster distance
         """
-        clusters = MinianAnalysis.get_corr_clustering(corr_df)
+        clusters = ActiveStateAnalyzer.get_corr_clustering(corr_df)
 
         corr_df = corr_df[clusters[:, 0]].loc[clusters[:, 0]]
         lens = pd.DataFrame(clusters).groupby(1).agg(len)[0]

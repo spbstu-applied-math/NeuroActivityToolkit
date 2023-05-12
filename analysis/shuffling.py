@@ -5,7 +5,7 @@ import numpy as np
 from tqdm.notebook import tqdm
 
 from analysis.functions import corr_df_to_distribution, active_df_to_dict
-from analysis.minian import MinianAnalysis
+from analysis.active_state import ActiveStateAnalyzer
 
 sns.set(color_codes=True)
 
@@ -38,7 +38,7 @@ class ShuffleAnalysis:
 
         for date in tqdm(self.dates, disable=(not self.verbose)):
             session_path = self.dates[date]["path"]
-            ma_o = MinianAnalysis(
+            ma_o = ActiveStateAnalyzer(
                 f"{self.path_to_data}/{session_path}/minian/", self.dates[date]["fps"]
             )
             ma_o.active_state_df = pd.read_excel(
@@ -48,7 +48,7 @@ class ShuffleAnalysis:
 
             ma_o.active_state = active_df_to_dict(ma_o.active_state_df)
 
-            ma_s = MinianAnalysis(
+            ma_s = ActiveStateAnalyzer(
                 f"{self.path_to_data}/{session_path}/minian/", self.dates[date]["fps"]
             )
 

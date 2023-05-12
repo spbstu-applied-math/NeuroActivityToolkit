@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import seaborn as sns
 import numpy as np
-from analysis.minian import MinianAnalysis
+from analysis.active_state import ActiveStateAnalyzer
 from analysis.functions import active_df_to_dict, corr_df_to_distribution
 
 sns.set(color_codes=True)
@@ -34,7 +34,7 @@ class DistanceAnalysis:
         self.models = {}
 
         for date in self.dates:
-            ma = MinianAnalysis(f"{self.path_to_data}/{date}/minian/", fps)
+            ma = ActiveStateAnalyzer(f"{self.path_to_data}/{date}/minian/", fps)
             ma.active_state_df = pd.read_excel(
                 f"{self.path_to_data}/{date}/results/active_states_spike.xlsx",
                 index_col=0,

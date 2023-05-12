@@ -6,7 +6,7 @@ from scipy.stats import kstest, mannwhitneyu, ks_2samp, wilcoxon
 from tqdm.notebook import tqdm
 
 from analysis.functions import corr_df_to_distribution, active_df_to_dict
-from analysis.minian import MinianAnalysis
+from analysis.active_state import ActiveStateAnalyzer
 
 sns.set(color_codes=True)
 
@@ -14,7 +14,7 @@ sns.set(color_codes=True)
 class StatTests:
     """
     Class for comparing and analysing different sessions.
-    Based on results of MinianAnalysis
+    Based on results of ActiveStateAnalyzer
     """
 
     def __init__(self, path_to_data, sessions, verbose=True):
@@ -46,7 +46,7 @@ class StatTests:
 
         for date in self.params:
             session_path = self.params[date]["path"]
-            ma = MinianAnalysis(
+            ma = ActiveStateAnalyzer(
                 f"{self.path_to_data}/{session_path}/minian/", self.params[date]["fps"]
             )
             ma.active_state_df = pd.read_excel(

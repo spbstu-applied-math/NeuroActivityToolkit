@@ -8,7 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from tqdm.notebook import tqdm
 
-from analysis.minian import MinianAnalysis
+from analysis.active_state import ActiveStateAnalyzer
 from analysis.functions import active_df_to_dict, corr_df_to_distribution
 
 
@@ -39,7 +39,7 @@ class Data:
         self.models = {}
         for date in tqdm(self.sessions, disable=self.disable_verbose):
             session_path = self.params[date]["path"]
-            ma = MinianAnalysis(
+            ma = ActiveStateAnalyzer(
                 f"{self.path_to_data}/{session_path}/minian/", self.params[date]["fps"]
             )
             ma.active_state_df = pd.read_excel(
@@ -243,7 +243,7 @@ class Data:
             corrs[corr] = corr_distr[corr].groupby("model").agg(agg_functions)
 
             cl_stats = [
-                list(MinianAnalysis.get_cluster_stats(corr_tmp[x]))[2:] + [x]
+                list(ActiveStateAnalyzer.get_cluster_stats(corr_tmp[x]))[2:] + [x]
                 for x in corr_tmp
             ]
             cluster_stats[corr] = pd.DataFrame(
