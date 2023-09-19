@@ -86,6 +86,13 @@ class DistanceAnalysis:
 
         df = df.reset_index(drop=True)
 
+        sig = df['mean_sig']
+        iqr = sig.quantile(.75) - sig.quantile(.25)
+        top = sig.quantile(.75) + iqr * 3 / 2
+        bottom = sig.quantile(.25) - iqr * 3 / 2
+
+        outliers = (sig > top) | (sig < bottom)
+
         fig = plt.figure(figsize=(15, 12))
         gs = GridSpec(3, 4, figure=fig)
 
@@ -98,18 +105,30 @@ class DistanceAnalysis:
         ax1.tick_params(axis="both", labelsize=14)
 
         ax2 = fig.add_subplot(gs[1:, :2])
-        sns.scatterplot(data=df, x="r", y="mean_sig", ax=ax2)
+        sns.regplot(data=df[~outliers], x="r", y="mean_sig", ax=ax2)
         ax2.set_xlabel("Rho distance, pixels", fontsize=16)
         ax2.set_ylabel(f"Signal mean", fontsize=16)
         ax2.set_title(f"Scatterplot", fontsize=18)
         ax2.tick_params(axis="both", labelsize=14)
+        ax2.text(.98, .98, "Pearson correlation: {:.2f}".format(df[~outliers].corr()['r']['mean_sig']),
+                 ha='right',
+                 va='top',
+                 transform=ax2.transAxes,
+                 bbox=dict(boxstyle="round"),
+                 size=15)
 
         ax3 = fig.add_subplot(gs[1:, 2:])
-        sns.scatterplot(data=df, x="r", y="active_ratio", ax=ax3)
+        sns.regplot(data=df, x="r", y="active_ratio", ax=ax3)
         ax3.set_xlabel("Rho distance, pixels", fontsize=16)
         ax3.set_ylabel(f"Active ratio", fontsize=16)
         ax3.set_title(f"Scatterplot", fontsize=18)
         ax3.tick_params(axis="both", labelsize=14)
+        ax3.text(.98, .98, "Pearson correlation: {:.2f}".format(df.corr()['r']['active_ratio']),
+                 ha='right',
+                 va='top',
+                 transform=ax3.transAxes,
+                 bbox=dict(boxstyle="round"),
+                 size=15)
 
         plt.subplots_adjust(wspace=0.5, hspace=0.5)
         plt.show()
@@ -210,6 +229,10 @@ class DistanceAnalysis:
         positions_df = pd.DataFrame()
         for key, model in self.models.items():
             ptr_df = model.positions.reset_index()
+            ptr_df["signal_mean"] = model.signals.mean()
+            ptr_df["active_ratio"] = (
+                    model.active_state_df.sum() / len(model.active_state_df)
+            ).tolist()
             ptr_df["model"] = key
             positions_df = positions_df.append(ptr_df)
 

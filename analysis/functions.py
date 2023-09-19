@@ -1,4 +1,8 @@
 import numpy as np
+import itertools
+from statannot import add_stat_annotation
+import matplotlib.pyplot as plt
+import seaborn as sns
 import statsmodels.api as sm
 from pyitlib import discrete_random_variable as drv
 
@@ -55,8 +59,41 @@ def crosscorr(signal1, signal2, lag=100):
 
 
 def transfer_entropy(x, y, k=1):
+    """
+    Function for computing transfer entropy
+    :param x: signal 1
+    :param y: signal 2
+    :param k: lag
+    :return: transfer entropy
+    """
     x = x[:-k]
     z = y[:-k]
     y = y[k:]
 
     return float(drv.information_mutual_conditional(y, x, z))
+
+
+def stat_test(data, x, y, test, text_format="simple", kind="bar"):
+    """
+    Function for statistical testing
+    :param data: DataFrame with data
+    :param x: feature 1
+    :param y: feature 2
+    :param test: statistical test
+        ["t-test_ind","t-test_welch","t-test_paired","Mann-Whitney","Mann-Whitney-gt","Mann-Whitney-ls","Levene","Wilcoxon","Kruskal"]
+    :param text_format: format of pvalue annotation
+        ["star", "simple", "full"]
+    :param kind: kind of plot
+        ["bar", "box"]
+    """
+    plt.figure(figsize=(7, 6))
+    if kind == "box":
+        ax = sns.boxplot(data=data, x=x, y=y)
+    else:
+        ax = sns.barplot(data=data, x=x, y=y)
+    test_results = add_stat_annotation(ax, data=data, x=x, y=y,
+                                       box_pairs=itertools.combinations(data[x].unique().tolist(), 2),
+                                       test=test, text_format=text_format,
+                                       loc='outside', verbose=0)
+
+    plt.show()

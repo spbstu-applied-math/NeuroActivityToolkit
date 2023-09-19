@@ -425,11 +425,11 @@ class Data:
 
         plt.show()
 
-    def show_stats_deviation(self, condition="all", topn=8):
+    def get_stats_deviation(self, condition="all"):
         """
-        Function for plotting deviation of statistics
+        Function for computing deviation of statistics
         :param condition: {'all' or specific condition} condition for plotting
-        :param topn: number of statistics for plotting
+        :return: pd.Series with deviation of statistics
         """
         if condition == "all":
             df = self.data.copy()
@@ -454,6 +454,16 @@ class Data:
         else:
             df = df.groupby("mouse").mean()
             feat_mad = df.mad().sort_values()
+
+        return feat_mad
+
+    def show_stats_deviation(self, condition="all", topn=8):
+        """
+        Function for plotting deviation of statistics
+        :param condition: {'all' or specific condition} condition for plotting
+        :param topn: number of statistics for plotting
+        """
+        feat_mad = self.get_stats_deviation(condition)
 
         plt.figure(figsize=(7, 6))
         plt.barh(feat_mad[:topn].index, feat_mad[:topn])
@@ -526,6 +536,25 @@ class Data:
         """
         self.data.to_excel(path + "/all_data.xlsx")
         self.data_reduced.to_excel(path + "/reduced_data.xlsx")
+
+    def save_stats_deviation(self, path):
+        """
+        Function for saving all data
+        :param path: path to target folder
+        """
+        conditions = set(
+            ["all"] + [self.params[session]["condition"] for session in self.params]
+        )
+
+        features_mad = []
+        for condition in conditions:
+            cond_div = self.get_stats_deviation(condition)
+            cond_div = cond_div.rename(condition)
+            features_mad.append(cond_div)
+
+        features_mad = pd.concat(features_mad, axis=1)
+
+        features_mad.to_excel(path + "/stats_deviation.xlsx")
 
 
 def iqr(x):

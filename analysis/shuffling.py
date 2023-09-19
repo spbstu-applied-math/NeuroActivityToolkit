@@ -231,13 +231,13 @@ class ShuffleAnalysis:
         fig, ax = plt.subplots(2, 1, figsize=(15, 10))
 
         ax[0].set_title("Original data", fontsize=20)
-        sns.heatmap(self.original_data[date].active_state_df, cbar=False, ax=ax[0])
+        sns.heatmap(self.original_data[date].active_state_df.T, cbar=False, ax=ax[0])
         ax[0].set_xticks([])
         ax[0].set_yticks([])
         ax[0].set_ylabel("Neurons", fontsize=18)
 
         ax[1].set_title("Shuffled data", fontsize=20)
-        sns.heatmap(self.shuffled_data[date].active_state_df, cbar=False, ax=ax[1])
+        sns.heatmap(self.shuffled_data[date].active_state_df.T, cbar=False, ax=ax[1])
         ax[1].set_yticks([])
         ax[1].set_xticks([])
         ax[1].set_xlabel("Time \u2192", fontsize=18)

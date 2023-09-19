@@ -10,6 +10,7 @@ from analysis.functions import crosscorr
 from pyitlib.discrete_random_variable import entropy_conditional, entropy_joint
 from scipy.cluster.hierarchy import linkage, fcluster
 from analysis.functions import corr_df_to_distribution
+import itertools
 
 sns.set(color_codes=True)
 
@@ -182,7 +183,7 @@ class ActiveStateAnalyzer:
                 plt.figure(figsize=(15, 10))
                 plt.title(f"Neuron {num}", fontsize=18)
 
-                plt.plot(signal, label="sleep")
+                plt.plot(signal, label="inactive")
                 for peak in peaks_idx:
                     plt.plot(signal.iloc[peak], c="r")
 
@@ -238,7 +239,7 @@ class ActiveStateAnalyzer:
         plt.figure(figsize=(15, 10))
         plt.title(f"Neuron {neuron}", fontsize=22)
 
-        plt.plot(signal, label="sleep", c="b", lw=4)
+        plt.plot(signal, label="inactive", c="b", lw=4)
         for peak in peaks_idx:
             plt.plot(signal.iloc[peak], c="r", lw=4)
 
@@ -386,6 +387,7 @@ class ActiveStateAnalyzer:
         :param thresholds: threshold values in percentages
         """
         nsd_df = self.network_spike_duration(thresholds)
+        nsd_df["Network spike duration"] *= 100
         plt.figure(figsize=(8, 6))
         plt.title("Network spike duration", fontsize=17)
         sns.barplot(data=nsd_df, x="percentage", y="Network spike duration")
@@ -792,7 +794,7 @@ class ActiveStateAnalyzer:
         plt.title("Network degree", fontsize=17)
         sns.lineplot(data=nd_df, x="threshold", y=f"nd_{method}")
         plt.xlabel("threshold", fontsize=16)
-        plt.ylabel("correlation coefficient value", fontsize=16)
+        plt.ylabel("number of co-active neurons, normalised", fontsize=16)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
         plt.show()
@@ -854,3 +856,25 @@ class ActiveStateAnalyzer:
         """
         conn_df = self.get_connectivity(method, thr)
         conn_df.to_excel(self.results_folder + f"/connectivity_{method}.xlsx")
+
+    def save_results(self):
+        """
+        Function for saving all ActiveStateAnalyzer results
+        """
+        self.save_active_states()
+        self.save_burst_rate()
+        self.save_network_spike_rate(1)
+        self.save_network_spike_peak(1)
+        self.save_network_spike_duration([5, 10, 20, 30, 50])
+
+        all_corr_methods = ["signal", "diff", "active", "active_acc"]
+        all_pos = [False, True]
+
+        for method, pos in itertools.product(all_corr_methods, all_pos):
+            self.save_correlation_matrix(
+                method=method, position=pos
+            )
+
+        for method in all_corr_methods:
+            self.save_network_degree(method)
+            self.save_connectivity(method=method)

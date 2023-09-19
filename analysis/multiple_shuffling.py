@@ -192,7 +192,7 @@ class MultipleShuffler:
 
         plt.figure(figsize=(15, 8))
         sns.barplot(data=ptr, x="position", y="corr", hue="shuffle_fraction")
-        plt.xlabel("Session", fontsize=16)
+        plt.xlabel("Position", fontsize=16)
         plt.ylabel("Range of correlation values", fontsize=16)
         plt.title(f"Mean correlation range ({self.correlation_type})", fontsize=18)
         plt.tick_params(axis="both", labelsize=14)
