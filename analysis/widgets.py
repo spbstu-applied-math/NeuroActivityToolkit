@@ -262,9 +262,9 @@ class ActiveStateAnalyzerWidgets:
         )
 
         left_box = widgets.VBox([corr_method, position])
-        right_box = widgets.VBox([threshold, lag])
+        center_box = widgets.VBox([threshold, lag])
 
-        display(widgets.HBox([left_box, right_box]))
+        display(widgets.HBox([left_box, center_box]))
         display(corr)
 
     @staticmethod
@@ -811,6 +811,117 @@ class DistanceAnalysisWidgets:
             print("Done!")
 
         button.on_click(on_button_clicked)
+        display(button)
+
+
+class GraphWidgets:
+    """Class with notebook widgets for GraphAnalysis"""
+
+    @staticmethod
+    def show_clusters(model):
+        """
+        Function for creating UI for show_clusters
+        :param model: GraphAnalysis class
+        """
+        corr_method = widgets.Dropdown(
+                    options=model.corr_types
+                )
+        
+        session = widgets.Dropdown(
+                    options=model.sessions
+                )
+
+        resolution = widgets.FloatSlider(
+            value=1,
+            min=0,
+            max=5,
+            step=0.05,
+            description="cluster resolution",
+            continuous_update=False,
+            readout=True,
+            readout_format=".2f",
+        )
+
+        corr = widgets.interactive_output(
+            model.show_clusters,
+            {
+                "session": session,
+                "method": corr_method,
+                "resolution": resolution,
+            },
+        )
+
+        display(widgets.HBox([session, corr_method, resolution]))
+        display(corr)
+
+    @staticmethod
+    def show_stats(model, conditions_order=None):
+        """
+        Function for creating UI for show_stat
+        :param model: GraphAnalysis class
+        :param conditions_order: conditions order
+        """
+        stat = widgets.Dropdown(
+            options=["centrality", "global_efficiency", "local_efficiency", "z_score", "participation"],
+            value="z_score",
+            description="stat",
+            disabled=False,
+        )
+
+        resolution = widgets.FloatSlider(
+            value=1,
+            min=0,
+            max=5,
+            step=0.05,
+            description="cluster resolution",
+            continuous_update=False,
+            readout=True,
+            readout_format=".2f",
+        )
+
+        def show_stats(stat, resolution):
+            model.show_stat(
+                stat=stat, resolution=resolution, conditions_order=conditions_order
+            )
+
+        stats = widgets.interactive_output(
+            show_stats,
+            {
+                "stat": stat,
+                "resolution": resolution,
+            },
+        )
+
+        display(widgets.HBox([stat, resolution]))
+        display(stats)
+
+    @staticmethod
+    def save(model, path):
+        """
+        Function for creating UI for saving
+        :param model: GraphAnalysis class
+        :param path: path to target folder
+        """
+
+        resolution = widgets.FloatSlider(
+            value=1,
+            min=0,
+            max=5,
+            step=0.05,
+            description="cluster resolution",
+            continuous_update=False,
+            readout=True,
+            readout_format=".2f",
+        )
+        button = widgets.Button(description="Save", button_style="success")
+
+        def on_button_clicked(b):
+            print("Saving...")
+            model.save_results(path, resolution.value)
+            print("Done!")
+
+        button.on_click(on_button_clicked)
+        display(widgets.HBox([resolution]))
         display(button)
 
 

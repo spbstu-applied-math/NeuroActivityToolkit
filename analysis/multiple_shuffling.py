@@ -117,7 +117,7 @@ class MultipleShuffler:
                     ptr_df["shuffle_fraction"] = shuffle_fraction
                     ptr_df["attempt"] = i
 
-                    stat_df = stat_df.append(ptr_df)
+                    stat_df = pd.concat([stat_df, ptr_df])
 
         return stat_df.reset_index(drop=True)
 
@@ -147,7 +147,7 @@ class MultipleShuffler:
                         ptr_df["attempt"] = i
                         ptr_df["shuffle_fraction"] = shuffle_fraction
 
-                        corr_df = corr_df.append(ptr_df)
+                        corr_df = pd.concat([corr_df, ptr_df])
 
         corr_df["corr"] = corr_df["corr"].fillna(0)
 

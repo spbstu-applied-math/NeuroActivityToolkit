@@ -71,42 +71,11 @@ class ShuffleAnalysis:
         :return: shuffled signal
         """
 
-        active_states = []
-        sleep = signal[signal == 0].reset_index()
-        sleep_min = sleep["index"].min()
+        signal_diff = np.diff([0] + signal.tolist() + [0])
+        starts = np.where(signal_diff == 1)[0]
+        ends = np.where(signal_diff == -1)[0]
 
-        if len(sleep) == 0:
-            active_states += [np.arange(0, len(signal), dtype="int").tolist()]
-        else:
-            if sleep_min > 0:
-                active_states.append(np.arange(0, sleep_min, dtype="int").tolist())
-
-            sleep["index_diff"] = sleep["index"].diff()
-
-            changes = sleep[sleep["index_diff"] > 1].copy()
-
-            if len(changes) > 0:
-                changes["start"] = changes["index"] - changes["index_diff"] + 1
-                changes["end"] = changes["index"]
-
-                active_states += changes.apply(
-                    lambda x: np.arange(x["start"], x["end"], dtype="int").tolist(),
-                    axis=1,
-                ).tolist()
-
-                sleep_max = sleep["index"].max() + 1
-                if sleep_max < len(signal):
-                    active_states.append(
-                        np.arange(sleep_max, len(signal), dtype="int").tolist()
-                    )
-
-        starts = []
-        lens = []
-        for x in active_states:
-            starts.append(x[0])
-            lens.append(len(x))
-
-        df = pd.DataFrame({"start": starts, "len": lens})
+        df = pd.DataFrame({"start": starts, "len": ends - starts})
 
         intervals = np.random.randint(100, size=len(df) + 1)
         intervals = intervals / intervals.sum() * len(signal[signal == 0])
@@ -140,24 +109,25 @@ class ShuffleAnalysis:
             corr = corr_df_to_distribution(
                 self.original_data[date].get_correlation(corr_type, position)
             )
-            df = df.append(
+            df = pd.concat([
+                df,
                 pd.DataFrame({"date": date, "model": "original", "values": corr})
-            )
+            ])
 
             corr = corr_df_to_distribution(
                 self.shuffled_data[date].get_correlation(corr_type, position)
             )
-            df = df.append(
+            df = pd.concat([
+                df,
                 pd.DataFrame({"date": date, "model": "shuffle", "values": corr})
-            )
+            ])
 
         df = df.fillna(0)
 
         ptp = df.groupby(["model", "date"]).agg({"values": np.ptp}).reset_index()
         diff = (
-            ptp.groupby(["date"]).agg({"model": list, "values": np.diff}).reset_index()
+            ptp.groupby(["date"]).agg({"model": list, "values": lambda x: -np.diff(x)[0]}).reset_index()
         )
-        diff["values"] = -diff["values"]
 
         fig, ax = plt.subplots(1, 2, figsize=(15, 5))
 

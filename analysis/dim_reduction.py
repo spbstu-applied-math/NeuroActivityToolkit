@@ -69,7 +69,7 @@ class Data:
             df_ptr = pd.DataFrame()
             df_ptr["burst_rate"] = self.models[date].burst_rate()["activations per min"]
             df_ptr["model"] = date
-            df_br = df_br.append(df_ptr)
+            df_br = pd.concat([df_br, df_ptr])
 
         df_br = df_br.reset_index(drop=True)
 
@@ -91,7 +91,7 @@ class Data:
                 self.models[date].network_spike_peak(1).T["peak"]
             )
             df_ptr["model"] = date
-            df_nsp = df_nsp.append(df_ptr)
+            df_nsp = pd.concat([df_nsp, df_ptr])
 
         df_nsp = df_nsp.reset_index(drop=True)
 
@@ -113,7 +113,7 @@ class Data:
                 self.models[date].network_spike_rate(1).T["spike rate"]
             )
             df_ptr["model"] = date
-            df_nsr = df_nsr.append(df_ptr)
+            df_nsr = pd.concat([df_nsr, df_ptr])
 
         df_nsr = df_nsr.reset_index(drop=True)
 
@@ -158,7 +158,7 @@ class Data:
                     (corr > thr).sum() / len(corr)
                 ]
             df_ptr["model"] = date
-            df_network_degree = df_network_degree.append(df_ptr)
+            df_network_degree = pd.concat([df_network_degree, df_ptr])
 
         df_network_degree = df_network_degree.reset_index(drop=True)
         df_network_degree = df_network_degree.fillna(0)
@@ -189,7 +189,7 @@ class Data:
                 corr_df
             )
             df_ptr["model"] = date
-            df_conn = df_conn.append(df_ptr)
+            df_conn = pd.concat([df_conn, df_ptr])
 
         df_conn = df_conn.reset_index(drop=True)
 
@@ -219,7 +219,6 @@ class Data:
         df_corr = {}
         corr_distr = {}
         corrs = {}
-        cluster_stats = {}
         for corr in tqdm(
             corr_types,
             disable=self.disable_verbose,
@@ -241,19 +240,6 @@ class Data:
             ).reset_index(drop=True)
 
             corrs[corr] = corr_distr[corr].groupby("model").agg(agg_functions)
-
-            cl_stats = [
-                list(ActiveStateAnalyzer.get_cluster_stats(corr_tmp[x]))[2:] + [x]
-                for x in corr_tmp
-            ]
-            cluster_stats[corr] = pd.DataFrame(
-                cl_stats,
-                columns=[
-                    f"intercluster_dist_{corr}",
-                    f"intracluster_dist_{corr}",
-                    "model",
-                ],
-            )
 
         df_network_degree = {}
         for corr in tqdm(
@@ -287,9 +273,6 @@ class Data:
 
         for corr in corr_types:
             data = data.merge(df_network_degree[corr].reset_index(), on="model")
-
-        for corr in corr_types:
-            data = data.merge(cluster_stats[corr], on="model")
 
         data = data.set_index("model")
 

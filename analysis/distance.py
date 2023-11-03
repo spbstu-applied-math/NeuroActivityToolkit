@@ -82,7 +82,7 @@ class DistanceAnalysis:
                 model.active_state_df.sum() / len(model.active_state_df)
             ).tolist()
             poss["date"] = date
-            df = df.append(poss)
+            df = pd.concat([df, poss])
 
         df = df.reset_index(drop=True)
 
@@ -159,7 +159,7 @@ class DistanceAnalysis:
 
             day_df["date"] = date
 
-            df = df.append(day_df)
+            df = pd.concat([df, day_df])
 
         df = df.reset_index(drop=True)
         df.index.name = "pair_number"
@@ -234,6 +234,6 @@ class DistanceAnalysis:
                     model.active_state_df.sum() / len(model.active_state_df)
             ).tolist()
             ptr_df["model"] = key
-            positions_df = positions_df.append(ptr_df)
+            positions_df = pd.concat([positions_df, ptr_df])
 
         positions_df.to_excel(path + "/position_analysis_df.xlsx")

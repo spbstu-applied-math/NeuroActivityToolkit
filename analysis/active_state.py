@@ -11,6 +11,7 @@ from pyitlib.discrete_random_variable import entropy_conditional, entropy_joint
 from scipy.cluster.hierarchy import linkage, fcluster
 from analysis.functions import corr_df_to_distribution
 import itertools
+import  networkx as nx
 
 sns.set(color_codes=True)
 
@@ -72,33 +73,16 @@ class ActiveStateAnalyzer:
         :param threshold: threshold for active state
         :return: list of lists with active states indexes
         """
-        res = []
-        sleep = signal[signal <= threshold].reset_index()
-        sleep_min = sleep["index"].min()
+        signal = signal.to_numpy()
+        active = np.where(signal >= threshold)[0]
+        if len(active) == 0:
+            return []
+        
+        active_diff = np.diff(active)
+        index_split = np.where(active_diff > 1)[0] + 1
 
-        if len(sleep) == 0:
-            return [np.arange(0, len(signal), dtype="int").tolist()]
-        elif sleep_min > 0:
-            # res.append(np.arange(0, sleep_min + 1, dtype='int').tolist())
-            res.append(np.arange(0, sleep_min, dtype="int").tolist())
-
-        sleep["index_diff"] = sleep["index"].diff()
-
-        changes = sleep[sleep["index_diff"] > 1].copy()
-
-        if len(changes) == 0:
-            return res
-
-        changes["start"] = changes["index"] - changes["index_diff"] + 1
-        changes["end"] = changes["index"]  # + 1
-
-        res += changes.apply(
-            lambda x: np.arange(x["start"], x["end"], dtype="int").tolist(), axis=1
-        ).tolist()
-
-        sleep_max = sleep["index"].max() + 1
-        if sleep_max < len(signal):
-            res.append(np.arange(sleep_max, len(signal), dtype="int").tolist())
+        res = np.split(active, index_split)
+        res = [list(x) for x in res]
         return res
 
     @staticmethod
@@ -159,14 +143,16 @@ class ActiveStateAnalyzer:
             y = self.smooth_diff[num]
 
             y_pos = y[y >= 0]
-            mad_pos = np.mean(np.abs(np.median(y_pos) - y_pos))
-            threshold_pos = np.median(y_pos) + mad_pos
+            median_pos = np.median(y_pos)
+            mad_pos = np.mean(np.abs(median_pos - y_pos))
+            threshold_pos = median_pos + mad_pos
             peaks_pos_idx = self.__get_active_states(y, threshold_pos)
 
             if method == "full":
                 y_neg = -y[y <= 0]
-                mad_neg = np.mean(np.abs(np.median(y_neg) - y_neg))
-                threshold_neg = np.median(y_neg) + mad_neg
+                median_neg = np.median(y_neg)
+                mad_neg = np.mean(np.abs(median_neg - y_neg))
+                threshold_neg = median_neg + mad_neg
                 peaks_neg_idx = self.__get_active_states(-y, threshold_neg)
             else:
                 peaks_neg_idx = []
@@ -197,10 +183,13 @@ class ActiveStateAnalyzer:
                 plt.legend(fontsize=18)
                 plt.show()
 
-        for neuron in self.active_state:
-            self.active_state_df[neuron] = [False] * len(self.signals)
-            for peak in self.active_state[neuron]:
-                self.active_state_df[neuron].iloc[peak] = True
+        active_state_matrix = np.full((len(self.active_state), len(self.signals)), False)
+
+        columns = list(self.active_state.keys())
+        for i, neuron in enumerate(columns):
+            active_state_matrix[i, np.hstack(self.active_state[neuron])] = True
+
+        self.active_state_df = pd.DataFrame(active_state_matrix.T, columns=columns)
 
     def get_active_state(self, neuron, window, cold, warm, method="spike"):
         """
@@ -218,18 +207,20 @@ class ActiveStateAnalyzer:
         smooth_signal = signal.rolling(window=window, center=True, min_periods=0).mean()
 
         # derivative
-        diff = signal.diff()[1:].reset_index(drop=True)
+        # diff = signal.diff()[1:].reset_index(drop=True)
         smooth_diff = smooth_signal.diff()[1:].reset_index(drop=True)
 
         y_pos = smooth_diff[smooth_diff >= 0]
-        mad_pos = np.mean(np.abs(np.median(y_pos) - y_pos))
-        threshold_pos = np.median(y_pos) + mad_pos
+        median_pos = np.median(y_pos)
+        mad_pos = np.mean(np.abs(median_pos - y_pos))
+        threshold_pos = median_pos + mad_pos
         peaks_pos_idx = self.__get_active_states(smooth_diff, threshold_pos)
 
         if method == "full":
             y_neg = -smooth_diff[smooth_diff <= 0]
-            mad_neg = np.mean(np.abs(np.median(y_neg) - y_neg))
-            threshold_neg = np.median(y_neg) + mad_neg
+            median_neg = np.median(y_neg)
+            mad_neg = np.mean(np.abs(median_neg - y_neg))
+            threshold_neg = median_neg + mad_neg
             peaks_neg_idx = self.__get_active_states(-smooth_diff, threshold_neg)
         else:
             peaks_neg_idx = []
@@ -695,77 +686,168 @@ class ActiveStateAnalyzer:
 
         plt.show()
 
+
     @staticmethod
-    def get_corr_clustering(corr_df):
+    def create_graph(corr_df):
+        """
+        Function for creating correlation graph 
+        :param corr_df: dataframe with correlation values
+        :return: networkx graph
+        """
+        corr_df = corr_df.abs()
+        corr = corr_df.values
+        graph = nx.Graph()
+        cols = corr_df.columns.tolist()
+        for i in range(len(corr)):
+            for j in range(i+1, len(corr)):
+                graph.add_edge(cols[i], cols[j], weight=corr[i, j], length=1-corr[i, j])
+
+        return graph
+
+    @staticmethod
+    def get_corr_clustering(corr_df, resolution=1):
         """
         Function for getting correlation clusters
         :param corr_df: dataframe with correlation values
+        :param resolution: resolution parameter for modularity
         :return: 2d array, where 1 - unit id, 2 cluster id
         """
-        corr_df = (corr_df + corr_df.T) / 2
+        # corr_df = (corr_df + corr_df.T) / 2
 
-        dissimilarity = corr_df_to_distribution(
-            corr_df.abs().max().max() - corr_df.abs()
-        )
-        hierarchy = linkage(dissimilarity, method="average")
+        # dissimilarity = corr_df_to_distribution(
+        #     corr_df.abs().max().max() - corr_df.abs()
+        # )
+        # hierarchy = linkage(dissimilarity, method="average")
 
-        dissimilarity = np.array(dissimilarity)
-        thr = 0
-        if dissimilarity[dissimilarity < 1].sum() > 0:
-            thr = np.quantile(dissimilarity, 0.2)
-            if thr == 1:
-                thr = dissimilarity[dissimilarity < 1].max()
+        # dissimilarity = np.array(dissimilarity)
+        # thr = 0
+        # if dissimilarity[dissimilarity < 1].sum() > 0:
+        #     thr = np.quantile(dissimilarity, 0.2)
+        #     if thr == 1:
+        #         thr = dissimilarity[dissimilarity < 1].max()
 
-        clusters = fcluster(hierarchy, thr, criterion="distance")
-        clusters = [[col, cl] for col, cl in zip(corr_df.columns, clusters)]
-        clusters.sort(key=lambda x: x[1])
+        # clusters = fcluster(hierarchy, thr, criterion="distance")
+        # clusters = [[col, cl] for col, cl in zip(corr_df.columns, clusters)]
+        # clusters.sort(key=lambda x: x[1])
+
+        corr_df = corr_df.abs()
+        
+        graph = ActiveStateAnalyzer.create_graph(corr_df)
+
+        c = nx.community.greedy_modularity_communities(graph, weight='weight', resolution=resolution)
+        clusters = []
+        for i, x in enumerate(c):
+            for y in x:
+                clusters.append([y, i])
+
+        clusters = np.array(clusters)
 
         return np.array(clusters)
 
     @staticmethod
-    def get_cluster_stats(corr_df):
+    def get_cluster_stats(corr_df, resolution=1):
         """
         Function for computing stats in correlation clusters
         :param corr_df: dataframe with correlation values
-        :return: number of clusters, mean cluster size, mean intercluster distance, mean intracluster distance
+        :param resolution: resolution parameter for modularity
+        :return: dict with z-score(list), participation(list), number_of_clusters(int), mean_cluster_size(float)
         """
-        clusters = ActiveStateAnalyzer.get_corr_clustering(corr_df)
+        corr_df = corr_df.abs()
+
+        clusters = ActiveStateAnalyzer.get_corr_clustering(corr_df, resolution=resolution)
+
+        cl_idx = np.unique(clusters[:, 1])
 
         corr_df = corr_df[clusters[:, 0]].loc[clusters[:, 0]]
-        lens = pd.DataFrame(clusters).groupby(1).agg(len)[0]
 
-        intercluster_dist = []
-        for i, n in enumerate(lens[:-1]):
-            start_y = lens[:i].sum()
-            for j, m in enumerate(lens[i + 1 :], start=i + 1):
-                start_x = lens[:j].sum()
-                intercluster_dist.append(
-                    corr_df.values[start_y : start_y + n, start_x : start_x + m].mean()
-                )
+        cluster_stats = {}
 
-        intracluster_dist = []
-        for i, n in enumerate(lens):
-            start = lens[:i].sum()
-            corr_distr = corr_df_to_distribution(
-                corr_df.iloc[start : start + n].T.iloc[start : start + n]
-            )
-            intracluster_dist.append(np.mean(corr_distr) if len(corr_distr) > 0 else 1)
+        z_score = pd.Series(dtype='float64')
 
-        clusters_num = len(lens)
-        mean_cluster_size = lens.mean()
-        mean_intercluster_dist = (
-            np.mean(intercluster_dist) if len(intercluster_dist) > 0 else 0
-        )
-        mean_intracluster_dist = (
-            np.mean(intracluster_dist) if len(intracluster_dist) > 0 else 1
-        )
+        for x in cl_idx:
+            idxs = clusters[clusters[:, 1] == x][:, 0]
+            k = (corr_df[idxs].loc[idxs].sum() - 1) / (len(idxs) - 1)
+            z = (k - k.mean()) / k.std()
+            z_score = pd.concat([z_score, z])
 
-        return (
-            clusters_num,
-            mean_cluster_size,
-            mean_intercluster_dist,
-            mean_intracluster_dist,
-        )
+        cluster_stats['z_score'] = z_score.fillna(0).tolist()
+
+        participation = pd.Series(0, dtype='float64', index=corr_df.index)
+
+        for x in cl_idx:
+            idxs = clusters[clusters[:, 1] == x][:, 0]
+            k = corr_df[idxs].sum(axis=1)
+            k.loc[idxs] -= 1
+            participation += k ** 2
+
+        participation = 1 - participation / (corr_df.sum() - 1) ** 2
+
+        cluster_stats['participation'] = participation.tolist()
+
+        cluster_stats['number_of_clusters'] = len(cl_idx)
+        cluster_stats['mean_cluster_size'] = len(corr_df) / len(cl_idx)
+
+        return cluster_stats
+    
+    @staticmethod
+    def get_graph_stats(corr_df):
+        """
+        Function for computing stats in correlation grpah
+        :param corr_df: dataframe with correlation values
+        :return: dict with centrality(list), global_efficiency(float), local_efficiency(float)
+        """
+        graph_stats = {}
+        min_length = 1e-4
+
+        corr_df = corr_df.abs()
+        l = len(corr_df)
+        graph = ActiveStateAnalyzer.create_graph(corr_df)
+
+        rows = []
+        idxs = []
+        for x in nx.shortest_path_length(graph, weight='length'):
+            rows.append(x[1])
+            idxs.append(x[0])
+
+        length_df = pd.DataFrame(rows, index=idxs)[idxs]
+        corr_df[idxs].loc[idxs]
+
+        centrality = (l - 1) / length_df.sum()
+
+        graph_stats['centrality'] = centrality.tolist()
+
+        g_efficiency = 0
+        for i, col in enumerate(length_df):
+            row = length_df[col].values
+            row = np.hstack([row[:i], row[i+1:]])
+            row = row.clip(min_length, 1)
+            row = 1 / row
+            g_efficiency += row.mean()
+
+        g_efficiency /= l
+
+        graph_stats['global_efficiency'] = g_efficiency
+
+        length_vals = length_df.values
+
+        l_efficiency = 0
+        for i, x in enumerate(corr_df):
+            col = corr_df[x].values
+            node_efficiency = 0
+            for j in range(i+1, l-1):
+                length = max(length_vals[i, j], min_length)
+                for h in range(j+1, l):
+                    node_efficiency += (col[j] * col[h] / length) ** (1 / 3)
+            s = col.sum()
+            node_efficiency /= s * (s - 1)
+
+            l_efficiency += node_efficiency
+
+        l_efficiency /= l
+
+        graph_stats['local_efficiency'] = l_efficiency
+
+        return graph_stats
 
     def get_network_degree(self, method="signal", thrs=None):
         """
@@ -862,6 +944,7 @@ class ActiveStateAnalyzer:
         Function for saving all ActiveStateAnalyzer results
         """
         self.save_active_states()
+        self.signals.to_excel(self.results_folder+'/signals.xlsx')
         self.save_burst_rate()
         self.save_network_spike_rate(1)
         self.save_network_spike_peak(1)
